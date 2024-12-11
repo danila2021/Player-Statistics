@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Statistics</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<h1>Player Statistics</h1>
+<input type="text" id="search" placeholder="Search player stats...">
+<button onclick="searchStats()">Search</button>
+<div id="results"></div>
+
+<script>
+    async function searchStats() {
+        const query = document.getElementById('search').value;
+        const response = await fetch(`/search?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = data.map(stat => `<p>${stat.player}: ${stat.statName} - ${stat.amount}</p>`).join('');
+    }
+</script>
+</body>
+</html>

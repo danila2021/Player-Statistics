@@ -1,0 +1,28 @@
+{
+	"schemaVersion": 1,
+	"id": "player-statistics",
+	"version": "${version}",
+	"name": "Player statistics",
+	"description": "Mod to synchronize and display player stats on the server.",
+	"authors": [
+		"FNewell"
+	],
+	"contact": {
+		"homepage": "https://github.com/FNewel",
+		"sources": "https://github.com/FNewel/Player-statistics"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/player-statistics/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"github.fnewell.playerstatistics.PlayerStatistics"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.16.9",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
