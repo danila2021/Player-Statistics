@@ -10,26 +10,38 @@ import java.sql.Timestamp;
 public class DatabaseInitializer {
 
     /*
-    * Initialises the database with the necessary tables.
-    * @param connection The connection to the database.
-    * @param dbType The type of the database.
-    * */
+     * Initializes the database with the necessary tables.
+     * @param connection The connection to the database.
+     * @param dbType The type of the database.
+     */
     public static void initializeDatabase(Connection connection, String dbType) {
+        // Define the id column definition based on the database type
+        String idDefinition = (dbType.equalsIgnoreCase("SQLITE")) ? "INTEGER PRIMARY KEY" : "INT NOT NULL AUTO_INCREMENT PRIMARY KEY";
+
         String[] createTableStatements = {
+                // Table uuid_map
+                "CREATE TABLE IF NOT EXISTS uuid_map (" +
+                        "id " + idDefinition + "," +
+                        "player_uuid " + getUUIDType(dbType) + " NOT NULL UNIQUE," +
+                        "player_nick VARCHAR(16) DEFAULT NULL" +
+                        ")",
+
                 // Table sync_metadata
                 "CREATE TABLE IF NOT EXISTS sync_metadata (" +
-                        "last_update " + getTimestampType(dbType) + " DEFAULT NULL)",
+                        "last_update " + getTimestampType(dbType) + " DEFAULT NULL," +
+                        "PRIMARY KEY (last_update)" +
+                        ")",
 
                 // Tables for statistics
-                createStatsTableSQL("minecraft:broken", dbType),
-                createStatsTableSQL("minecraft:crafted", dbType),
-                createStatsTableSQL("minecraft:custom", dbType),
-                createStatsTableSQL("minecraft:dropped", dbType),
-                createStatsTableSQL("minecraft:killed", dbType),
-                createStatsTableSQL("minecraft:killed_by", dbType),
-                createStatsTableSQL("minecraft:mined", dbType),
-                createStatsTableSQL("minecraft:picked_up", dbType),
-                createStatsTableSQL("minecraft:used", dbType)
+                createStatsTableSQL("broken", dbType),
+                createStatsTableSQL("crafted", dbType),
+                createStatsTableSQL("custom", dbType),
+                createStatsTableSQL("dropped", dbType),
+                createStatsTableSQL("killed", dbType),
+                createStatsTableSQL("killed_by", dbType),
+                createStatsTableSQL("mined", dbType),
+                createStatsTableSQL("picked_up", dbType),
+                createStatsTableSQL("used", dbType)
         };
 
         try {
@@ -50,24 +62,26 @@ public class DatabaseInitializer {
     }
 
     /*
-    * Creates the SQL statement for creating a statistics table.
-    * @param tableName The name of the table.
-    * @param dbType The type of the database.
-    * */
+     * Creates the SQL statement for creating a statistics table.
+     * The table uses player_id as a foreign key referencing uuid_map.
+     * @param tableName The name of the table.
+     * @param dbType The type of the database.
+     */
     private static String createStatsTableSQL(String tableName, String dbType) {
         return "CREATE TABLE IF NOT EXISTS `" + tableName + "` (" +
-                "player_uuid " + getUUIDType(dbType) + " NOT NULL," +
+                "player_id INT NOT NULL," +
                 "stat_name VARCHAR(256) NOT NULL," +
                 "amount INT NOT NULL," +
-                "PRIMARY KEY (player_uuid, stat_name)" +
+                "PRIMARY KEY (player_id, stat_name)," +
+                "FOREIGN KEY (player_id) REFERENCES uuid_map(id) ON DELETE CASCADE" +
                 ")";
     }
 
     /*
-    * Returns the appropriate timestamp type for the database.
-    * @param dbType The type of the database.
-    * @return The timestamp type.
-    * */
+     * Returns the appropriate timestamp type for the database.
+     * @param dbType The type of the database.
+     * @return The timestamp type.
+     */
     private static String getTimestampType(String dbType) {
         return switch (dbType) {
             case "MARIADB", "MYSQL" -> "DATETIME";
@@ -78,10 +92,10 @@ public class DatabaseInitializer {
     }
 
     /*
-    * Returns the appropriate UUID type for the database.
-    * @param dbType The type of the database.
-    * @return The UUID type.
-    * */
+     * Returns the appropriate UUID type for the database.
+     * @param dbType The type of the database.
+     * @return The UUID type.
+     */
     private static String getUUIDType(String dbType) {
         return switch (dbType) {
             case "MARIADB", "MYSQL", "SQLITE" -> "VARCHAR(36)";
@@ -91,10 +105,10 @@ public class DatabaseInitializer {
     }
 
     /*
-    * Checks if the last_update is initialized in the database.
-    * @param connection The connection to the database.
-    * @return True if the last_update is initialized, false otherwise.
-    * */
+     * Checks if the last_update is initialized in the database.
+     * @param connection The connection to the database.
+     * @return True if the last_update is initialized, false otherwise.
+     */
     private static boolean isLastUpdateInitialized(Connection connection) {
         String sql = "SELECT COUNT(*) FROM sync_metadata WHERE last_update IS NOT NULL";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -111,10 +125,10 @@ public class DatabaseInitializer {
     }
 
     /*
-    * Initializes the last_update in the database.
-    * @param connection The connection to the database.
-    * @param dbType The type of the database.
-    * */
+     * Initializes the last_update in the database.
+     * @param connection The connection to the database.
+     * @param dbType The type of the database.
+     */
     private static void initializeLastUpdate(Connection connection, String dbType) {
         String sql = "INSERT INTO sync_metadata (last_update) VALUES (?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {

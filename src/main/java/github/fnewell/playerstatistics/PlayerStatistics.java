@@ -32,8 +32,8 @@ public class PlayerStatistics implements ModInitializer {
 		StatSyncScheduler.startScheduledSync();
 
 		// Run web server if enabled in the config
-		if(ConfigUtils.config.getBoolean("web-server.enabled"))
-			WebServer.startServer();
+		/*if(ConfigUtils.config.getBoolean("web-server.enabled"))
+			WebServer.startServer();*/
 
 		// Stop the scheduled synchronization task on server shutdown
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> StatSyncScheduler.stopScheduledSync());

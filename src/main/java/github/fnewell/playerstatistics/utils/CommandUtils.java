@@ -57,9 +57,12 @@ public class CommandUtils {
                 .then(literal("status")
                         .executes(context -> {
                             context.getSource().sendFeedback(() -> Text.of("Current status:"), false);
-                            context.getSource().sendFeedback(() -> Text.of("Syncing: " + StatSyncTask.isSyncing), false);
+                            context.getSource().sendFeedback(() -> Text.of("Status: " + (StatSyncTask.isSyncing ? "Syncing data" : (StatSyncTask.isFetchingNicks ? "Fetching nicks" : "Idle"))), false);
                             if (StatSyncTask.isSyncing) {
                                 context.getSource().sendFeedback(() -> Text.of("Synced players: " + StatSyncTask.syncedPlayers + "/" + StatSyncTask.totalPlayers), false);
+                            }
+                            if (StatSyncTask.isFetchingNicks) {
+                                context.getSource().sendFeedback(() -> Text.of("Fetching nicks: " + StatSyncTask.syncedPlayers + "/" + StatSyncTask.totalPlayers), false);
                             }
                             return 1;
                         })
