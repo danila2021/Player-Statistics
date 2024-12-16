@@ -2,6 +2,8 @@ package github.fnewell.playerstatistics.utils;
 
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
+
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -57,12 +59,9 @@ public class CommandUtils {
                 .then(literal("status")
                         .executes(context -> {
                             context.getSource().sendFeedback(() -> Text.of("Current status:"), false);
-                            context.getSource().sendFeedback(() -> Text.of("Status: " + (StatSyncTask.isSyncing ? "Syncing data" : (StatSyncTask.isFetchingNicks ? "Fetching nicks" : "Idle"))), false);
-                            if (StatSyncTask.isSyncing) {
-                                context.getSource().sendFeedback(() -> Text.of("Synced players: " + StatSyncTask.syncedPlayers + "/" + StatSyncTask.totalPlayers), false);
-                            }
-                            if (StatSyncTask.isFetchingNicks) {
-                                context.getSource().sendFeedback(() -> Text.of("Fetching nicks: " + StatSyncTask.syncedPlayers + "/" + StatSyncTask.totalPlayers), false);
+                            context.getSource().sendFeedback(() -> Text.of("Status: " + StatSyncTask.status), false);
+                            if (Objects.equals(StatSyncTask.status, "Syncing data") || Objects.equals(StatSyncTask.status, "Fetching nicks")) {
+                                context.getSource().sendFeedback(() -> Text.of("Progress: " + StatSyncTask.syncedPlayers + "/" + StatSyncTask.totalPlayers), false);
                             }
                             return 1;
                         })

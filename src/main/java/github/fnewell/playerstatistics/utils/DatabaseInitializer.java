@@ -32,6 +32,19 @@ public class DatabaseInitializer {
                         "PRIMARY KEY (last_update)" +
                         ")",
 
+                // Table hall_of_fame
+                "CREATE TABLE IF NOT EXISTS hall_of_fame (" +
+                        "player_id INT NOT NULL," +
+                        "first_place INT NOT NULL," +
+                        "second_place INT NOT NULL," +
+                        "third_place INT NOT NULL," +
+                        "fourth_place INT NOT NULL," +
+                        "fifth_place INT NOT NULL," +
+                        "score INT NOT NULL," +
+                        "PRIMARY KEY (player_id)," +
+                        "FOREIGN KEY (player_id) REFERENCES uuid_map(id) ON DELETE CASCADE" +
+                        ")",
+
                 // Tables for statistics
                 createStatsTableSQL("broken", dbType),
                 createStatsTableSQL("crafted", dbType),
@@ -70,10 +83,12 @@ public class DatabaseInitializer {
     private static String createStatsTableSQL(String tableName, String dbType) {
         return "CREATE TABLE IF NOT EXISTS `" + tableName + "` (" +
                 "player_id INT NOT NULL," +
+                "position INT(2) NULL," +
                 "stat_name VARCHAR(256) NOT NULL," +
                 "amount INT NOT NULL," +
                 "PRIMARY KEY (player_id, stat_name)," +
-                "FOREIGN KEY (player_id) REFERENCES uuid_map(id) ON DELETE CASCADE" +
+                "FOREIGN KEY (player_id) REFERENCES uuid_map(id) ON DELETE CASCADE," +
+                "INDEX idx_position (position)" +
                 ")";
     }
 

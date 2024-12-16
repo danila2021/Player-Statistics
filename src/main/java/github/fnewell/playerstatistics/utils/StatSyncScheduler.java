@@ -1,5 +1,6 @@
 package github.fnewell.playerstatistics.utils;
 
+import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -26,7 +27,7 @@ public class StatSyncScheduler {
 
         // Schedule the sync task
         scheduler.scheduleAtFixedRate(() -> {
-            if (!StatSyncTask.isSyncing) {
+            if (Objects.equals(StatSyncTask.status, "Idle")) {
                 try {
                     StatSyncTask.syncAllPlayerStats();
                 } catch (Exception e) {
