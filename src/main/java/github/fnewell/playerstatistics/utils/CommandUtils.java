@@ -1,9 +1,11 @@
 package github.fnewell.playerstatistics.utils;
 
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import me.lucko.fabric.api.permissions.v0.Permissions;
 
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -16,53 +18,62 @@ public class CommandUtils {
     // Executor for async tasks
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    /*
-    * Register commands
-    * */
+    /**
+     * Register commands
+     */
     public static void registerCommands() {
 
-        // Register /statsync help
-        EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("statsync")
+        // Register "/pstats help"
+        EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("pstats")
+                .requires(Permissions.require("pstats", 2))
                 .then(literal("help")
                         .executes(context -> {
-                            context.getSource().sendFeedback(() -> Text.of("Help command"), false);
+                            context.getSource().sendFeedback(() ->
+                                    Text.literal("-- Player Statistics Help --\n").setStyle(Style.EMPTY.withBold(true).withColor(Formatting.GOLD))
+                                        .append(Text.literal("/statsync help - Show this help\n").setStyle(Style.EMPTY.withBold(false).withColor(Formatting.GOLD)))
+                                        .append(Text.literal("/statsync sync - Synchronize all player statistics\n").setStyle(Style.EMPTY.withBold(false).withColor(Formatting.GOLD)))
+                                        .append(Text.literal("/statsync status - Show current synchronization status\n").setStyle(Style.EMPTY.withBold(false).withColor(Formatting.GOLD)))
+                                        .append(Text.literal("------------------------").setStyle(Style.EMPTY.withBold(true).withColor(Formatting.GOLD))), false);
                             return 1;
                         })
                 )
         ));
 
-        // Register /statsync sync
-        EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("statsync")
+        // Register "/pstats sync"
+        EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("pstats")
                 .then(literal("sync")
                         .executes(context -> {
                             ServerCommandSource source = context.getSource();
-                            source.sendFeedback(() -> Text.of("Running sync on background..."), false);
+                            source.sendFeedback(() -> Text.literal("Player Statistics synchronization started ...").setStyle(Style.EMPTY.withColor(Formatting.GOLD)), false);
 
-                            // Spusti synchronizáciu na pozadí
+                            // Run the synchronization task in a separate thread
                             executor.submit(() -> {
-                                try {
-                                    StatSyncTask.syncAllPlayerStats();
-                                    source.sendFeedback(() -> Text.of("Synchronization successful!"), false);
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                    source.sendFeedback(() -> Text.of("Synchronization failed!"), false);
+                                if (StatSyncTask.syncAllPlayerStats()) {
+                                    source.sendFeedback(() -> Text.literal("Player Statistics synchronization completed successfully!").setStyle(Style.EMPTY.withColor(Formatting.GREEN)), false);
+                                } else {
+                                    source.sendFeedback(() -> Text.literal("Player Statistics synchronization failed!").setStyle(Style.EMPTY.withColor(Formatting.RED)), false);
                                 }
                             });
-
                             return 1;
                         })
                 )
         ));
 
-        // Register /statsync status
-        EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("statsync")
+        // Register "/psats status"
+        EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("pstats")
                 .then(literal("status")
                         .executes(context -> {
-                            context.getSource().sendFeedback(() -> Text.of("Current status:"), false);
-                            context.getSource().sendFeedback(() -> Text.of("Status: " + StatSyncTask.status), false);
-                            if (Objects.equals(StatSyncTask.status, "Syncing data") || Objects.equals(StatSyncTask.status, "Fetching nicks")) {
-                                context.getSource().sendFeedback(() -> Text.of("Progress: " + StatSyncTask.syncedPlayers + "/" + StatSyncTask.totalPlayers), false);
-                            }
+                            context.getSource().sendFeedback(() ->
+                                    Text.literal("-- Player Statistics Status --\n").setStyle(Style.EMPTY.withBold(true).withColor(Formatting.GOLD))
+                                        .append(Text.literal("Status: ").setStyle(Style.EMPTY.withBold(false).withColor(Formatting.GOLD)))
+                                        .append(Text.literal(StatSyncTask.status + "\n").setStyle(Style.EMPTY.withBold(true).withColor(Formatting.RED)))
+                                        .append(Text.literal("Last sync: ").setStyle(Style.EMPTY.withBold(false).withColor(Formatting.GOLD)))
+                                        .append(Text.literal(StatSyncTask.lastSync + "\n").setStyle(Style.EMPTY.withBold(true).withColor(Formatting.RED)))
+                                        .append(Text.literal("Progress: " ).setStyle(Style.EMPTY.withBold(false).withColor(Formatting.GOLD)))
+                                        .append(Text.literal(String.valueOf(StatSyncTask.progressFrom)).setStyle(Style.EMPTY.withBold(true).withColor(Formatting.RED)))
+                                        .append(Text.literal("/").setStyle(Style.EMPTY.withBold(false).withColor(Formatting.GOLD)))
+                                        .append(Text.literal(StatSyncTask.progressTo + "\n").setStyle(Style.EMPTY.withBold(true).withColor(Formatting.RED)))
+                                        .append(Text.literal("--------------------------").setStyle(Style.EMPTY.withBold(true).withColor(Formatting.GOLD))), false);
                             return 1;
                         })
                 )
