@@ -3,7 +3,7 @@
 	"id": "player-statistics",
 	"version": "${version}",
 	"name": "Player statistics",
-	"description": "Mod to synchronize and display player stats on the server.",
+	"description": "Mod to synchronize and display player stats from server on the website.",
 	"authors": [
 		"FNewell"
 	],
@@ -23,6 +23,7 @@
 		"fabricloader": ">=0.16.9",
 		"minecraft": "~1.21.4",
 		"java": ">=21",
-		"fabric-api": "*"
+		"fabric-api": "*",
+		"fabric-language-kotlin": "*"
 	}
 }

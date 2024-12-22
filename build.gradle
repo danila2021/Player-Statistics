@@ -33,19 +33,29 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-	// Toml Config Library
-	implementation 'com.typesafe:config:1.4.3'
+	// HOCON Configuration Library
+	include(implementation 'com.typesafe:config:1.4.3')
 
 	// JDCB drivers
-	implementation 'org.mariadb.jdbc:mariadb-java-client:3.5.1'	// MariaDB
-	implementation 'org.xerial:sqlite-jdbc:3.47.1.0'			// SQLite
-	implementation 'org.postgresql:postgresql:42.7.4'			// PostgreSQL
+	//include(implementation 'org.mariadb.jdbc:mariadb-java-client:3.5.1')	// MariaDB
+	//include(implementation 'org.xerial:sqlite-jdbc:3.47.1.0')				// SQLite
+	//include(implementation 'org.postgresql:postgresql:42.7.4')			// PostgreSQL
 
-	// Jackson JSON Library
-	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+	modImplementation("net.fabricmc:fabric-language-kotlin:1.13.0+kotlin.2.1.0")
 
 	// Javalin Web Framework
-	implementation 'io.javalin:javalin:6.3.0'
+	include(implementation 'io.javalin:javalin:6.4.0')
+	include(implementation 'org.eclipse.jetty:jetty-server:11.0.24')
+	include(implementation 'org.eclipse.jetty:jetty-webapp:11.0.24')
+	include(implementation 'org.eclipse.jetty.toolchain:jetty-jakarta-servlet-api:5.0.2')
+	include(implementation 'org.eclipse.jetty:jetty-util:11.0.24')
+	include(implementation 'org.eclipse.jetty:jetty-http:11.0.24')
+	include(implementation 'org.eclipse.jetty:jetty-servlet:11.0.24')
+	include(implementation 'org.eclipse.jetty:jetty-security:11.0.24')
+	include(implementation 'org.eclipse.jetty:jetty-io:11.0.24')
+
+	// Permissions API
+	include(modImplementation 'me.lucko:fabric-permissions-api:0.3.1')
 	
 }
 
