@@ -1,24 +1,36 @@
 package github.fnewell.playerstatistics.webserver;
 
+import github.fnewell.playerstatistics.PlayerStatistics;
 import github.fnewell.playerstatistics.utils.ConfigUtils;
 import io.javalin.Javalin;
-import github.fnewell.playerstatistics.utils.DatabaseUtils;
+import io.javalin.http.staticfiles.Location;
+import net.fabricmc.loader.api.FabricLoader;
 
-import java.util.List;
-import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class WebServer {
 
     public static void startServer() {
-        Javalin app = Javalin.create(config -> {
-            config.staticFiles.add("/webpage");
-        }).start(ConfigUtils.config.getInt("web-server.port"));
+        int port = ConfigUtils.config.getInt("web-server.port");
 
-        // Search endpoint
-        app.get("/search", ctx -> {
-            String query = ctx.queryParam("query");
-            List<Map<String, Object>> results = DatabaseUtils.searchPlayerStats(query);
-            ctx.json(results);
+        Javalin app = Javalin.create(config -> {
+            config.showJavalinBanner = false;
+            config.staticFiles.add("/webpage", Location.CLASSPATH);
+        }).start(port);
+
+        PlayerStatistics.LOGGER.info("Web server running on port {}", port);
+
+        // Endpoint to get the player-statistics.db file
+        app.get("/player-statistics.db", ctx -> {
+            Path dbPath = FabricLoader.getInstance().getGameDir().resolve("mods/player-statistics/player-statistics.db");
+
+            if (Files.exists(dbPath)) {
+                ctx.contentType("application/octet-stream");
+                ctx.result(Files.newInputStream(dbPath));
+            } else {
+                ctx.status(404).result("File not found: data2.db");
+            }
         });
     }
 }
