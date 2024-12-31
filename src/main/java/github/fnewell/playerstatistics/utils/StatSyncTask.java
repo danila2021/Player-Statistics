@@ -25,6 +25,7 @@ public class StatSyncTask {
     public static String lastSync = "Never";    // Last synchronization time
     public static int progressFrom = 0;         // Number of already done tasks
     public static int progressTo = 0;           // Total number of tasks
+    public static int playersToUpdate = 0;      // Number of players to update (if zero, no update is needed)
 
     /**
       * Synchronize all player statistics with the database.
@@ -73,7 +74,8 @@ public class StatSyncTask {
                 if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Database initialized."); }
 
                 // Check if the stats folder exists
-                Path statsDir = Path.of("world/stats");
+                //Path statsDir = Path.of("world/stats");
+                Path statsDir = Path.of(ConfigUtils.config.getString("stats-folder"));
                 if (!Files.exists(statsDir)) {
                     PlayerStatistics.LOGGER.warn("Stats folder not found, skipping synchronization.");
                     status = "Idle";
@@ -94,9 +96,9 @@ public class StatSyncTask {
                 try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(statsDir, "*.json")) {
                     for (Path statsFile : directoryStream) {
                         UUID playerUUID = extractUUIDFromFile(statsFile);
-                        if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("... Player UUID: {}", playerUUID); }
                         if (playerUUID != null) {
                             Timestamp lastModified = new Timestamp(Files.getLastModifiedTime(statsFile).toMillis());
+                            if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("... Player UUID: {} / Last modified: {}", playerUUID, lastModified); }
                             fileTimestamps.put(playerUUID, lastModified);
                             playerFiles.put(playerUUID, statsFile);
                         }
@@ -115,7 +117,8 @@ public class StatSyncTask {
                 status = "Syncing data";
 
                 // Parallel synchronization of player statistics
-                Timestamp finalLastGlobalSyncTime = lastGlobalSyncTime;
+                // Get players last online time
+                Map<String, Timestamp> dbPlayers = fetchPlayerDataFromDatabase(connection);
 
                 if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Syncing player stats ..."); }
 
@@ -123,7 +126,11 @@ public class StatSyncTask {
                     if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Executor created."); }
 
                     fileTimestamps.forEach((playerUUID, lastModified) -> {
-                        if (lastModified.after(finalLastGlobalSyncTime)) {
+                        Timestamp playerLastOnline = dbPlayers.get(playerUUID.toString());
+
+                        if (playerLastOnline == null || lastModified.after(dbPlayers.get(playerUUID.toString()))) {
+                            playersToUpdate++;
+
                             executor.submit(() -> {
                                 try {
                                     JsonNode rootNode = MAPPER.readTree(playerFiles.get(playerUUID).toFile());
@@ -161,26 +168,32 @@ public class StatSyncTask {
                 progressFrom = 0;
 
                 // Fetch and update missing player nicks
-                status = "Fetching nicks";
-                fetchAndUpdateMissingPlayerNicks(connection);
-                if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Player nicks fetched."); }
+                if (playersToUpdate > 0) {
+                    status = "Fetching nicks";
+                    fetchAndUpdateMissingPlayerNicks(connection);
+                    if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Player nicks fetched.");}
 
-                // Reset fetched counters
-                progressTo = 0;
-                progressFrom = 0;
+                    // Reset fetched counters
+                    progressTo = 0;
+                    progressFrom = 0;
+                }
 
                 // Update the positions of the players in the database
-                status = "Updating positions";
-                DatabaseUtils.updatePositionsForTable(connection);
-                if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Player positions updated."); }
+                if (playersToUpdate > 0) {
+                    status = "Updating positions";
+                    DatabaseUtils.updatePositionsForTable(connection);
+                    if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Player positions updated."); }
 
-                progressTo = 0;
-                progressFrom = 0;
+                    progressTo = 0;
+                    progressFrom = 0;
+                }
 
                 // Populate Hall of Fame table with the top players
-                status = "Populating Hall of Fame";
-                DatabaseUtils.populateHallOfFame(connection);
-                if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Hall of Fame populated."); }
+                if (playersToUpdate > 0) {
+                    status = "Populating Hall of Fame";
+                    DatabaseUtils.populateHallOfFame(connection);
+                    if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Hall of Fame populated."); }
+                }
 
                 // Get server name, description, url and server icon
                 // Server name and url from config file
@@ -225,12 +238,15 @@ public class StatSyncTask {
                 updateSyncMetadata(connection, serverName, serverDesc, serverUrl, serverIcon);
                 if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Sync metadata updated."); }
 
+                playersToUpdate = 0;
                 status = "Idle";
                 return true;
             }
         } catch (Exception e) {
             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Trace: ", e); }
             PlayerStatistics.LOGGER.error("Error while synchronizing player stats: {}", e.getMessage());
+
+            playersToUpdate = 0;
             status = "Idle";
             return false;
         }
