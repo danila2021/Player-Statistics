@@ -61,6 +61,39 @@ public class DatabaseUtils {
     }
 
     /**
+     * Fetch the list of players (UUID and last online time) from the database.
+     *
+     * @param connection The database connection to use.
+     * @return A map containing player UUIDs as keys and their last online times as values.
+     */
+    public static Map<String, Timestamp> fetchPlayerDataFromDatabase(Connection connection) {
+        if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Fetching player data from database..."); }
+
+        String query = "SELECT player_uuid, player_last_online FROM uuid_map";
+        Map<String, Timestamp> playerDataMap = new HashMap<>();
+
+        try (PreparedStatement statement = connection.prepareStatement(query);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                String playerUUID = resultSet.getString("player_uuid");
+                long lastOnlineMillis = resultSet.getLong("player_last_online");
+                Timestamp lastOnline = new Timestamp(lastOnlineMillis);
+
+                playerDataMap.put(playerUUID, lastOnline);
+
+                if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Fetched player: UUID = {}, Last Online = {}", playerUUID, lastOnline); }
+            }
+
+        } catch (SQLException e) {
+            if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Trace: ", e); }
+            PlayerStatistics.LOGGER.error("Error fetching player data from database: {}", e.getMessage());
+        }
+
+        return playerDataMap;
+    }
+
+    /**
       * Fetch and update missing player nicknames in the database.
       * This method is called after all player statistics have been synchronized, to fetch all missing player nicknames.
       *
@@ -103,7 +136,16 @@ public class DatabaseUtils {
                     executor.submit(() -> {
                         if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Executor running (missing nicks)"); }
                         try {
-                            String playerNick = fetchPlayerNickFromAPI(playerUUID);
+                            String playerNick;
+
+                            // Check if the player UUID starts with '00000000-0000-0000-'
+                            if (playerUUID.startsWith("00000000-0000-0000-")) {
+                                playerNick = fetchBedrockPlayerNickFromAPI(playerUUID);
+                            } else {
+                                playerNick = fetchJavaPlayerNickFromAPI(playerUUID);
+                            }
+
+                            //String playerNick = fetchJavaPlayerNickFromAPI(playerUUID);
                             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Fetched nick for UUID: {} ({})", playerUUID, playerNick); }
                             if (playerNick != null) {
                                 updatePlayerNickInDatabase(connection, playerId, playerNick);
@@ -149,7 +191,18 @@ public class DatabaseUtils {
             try (ResultSet rs = selectStmt.executeQuery()) {
                 if (rs.next()) {
                     if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Player ID found for UUID: {}", playerUUID); }
-                    return rs.getInt("id");
+
+                    int playerId = rs.getInt("id");
+
+                    // Update the last online timestamp
+                    String updateSQL = "UPDATE uuid_map SET player_last_online = ? WHERE id = ?";
+                    try (PreparedStatement updateStmt = connection.prepareStatement(updateSQL)) {
+                        updateStmt.setTimestamp(1, lastOnline);
+                        updateStmt.setInt(2, playerId);
+                        updateStmt.executeUpdate();
+                    }
+
+                    return playerId;
                 }
             }
         }
@@ -255,7 +308,6 @@ public class DatabaseUtils {
 
             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Executing update statement ..."); }
             statement.executeUpdate();
-            if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Sync metadata updated!"); }
 
             // Update last sync time (remove milliseconds)
             StatSyncTask.lastSync = String.valueOf(now).split("\\.")[0];
@@ -366,7 +418,44 @@ public class DatabaseUtils {
             StatSyncTask.progressFrom++;
         } catch (Exception e) {
             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Trace: ", e); }
-            PlayerStatistics.LOGGER.error("Error synchronizing player stats: {}", e.getMessage());  // TODO: Error synchronizing player stats: not implemented by SQLite JDBC driver ?????
+            PlayerStatistics.LOGGER.error("Error synchronizing player stats: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Fetch the player nickname from the GeyserMC API.
+     *
+     * @param playerUUID The UUID of the player.
+     * @return The player gamertag or null if not found (or an error occurred).
+     */
+    private static String fetchBedrockPlayerNickFromAPI(String playerUUID) {
+        if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Fetching Bedrock player nick from API ..."); }
+
+        // Remove leading zeros ('00000000-0000-0000-' - first 19 characters) from the player UUID
+        playerUUID = playerUUID.substring(19).replace("-", "");
+        // Convert string from hexadecimal format to decimal format
+        long playerLong = Long.parseLong(playerUUID, 16);
+
+        String apiUrl = "https://api.geysermc.org/v2/xbox/gamertag/" + playerLong;
+        try {
+            // Create a connection to the API as a GET request
+            URI uri = new URI(apiUrl);
+            HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
+            connection.setRequestMethod("GET");
+
+            // Read the response from the API
+            try (Scanner scanner = new Scanner(connection.getInputStream())) {
+                if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Reading response from API (Bedrock) ..."); }
+                String response = scanner.useDelimiter("\\A").next();
+                JsonNode rootNode = StatSyncTask.MAPPER.readTree(response);
+                JsonNode profileNameNode = rootNode.get("gamertag");
+                if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Player nick fetched from API (Bedrock): {}", profileNameNode.asText()); }
+                return profileNameNode != null ? profileNameNode.asText() : null;
+            }
+        } catch (Exception e) {
+            if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Trace: ", e); }
+            PlayerStatistics.LOGGER.error("Error fetching player nick from API (Bedrock): {}", e.getMessage());
+            return null;
         }
     }
 
@@ -376,8 +465,8 @@ public class DatabaseUtils {
       * @param playerUUID The UUID of the player.
       * @return The player nickname or null if not found (or an error occurred).
       */
-    private static String fetchPlayerNickFromAPI(String playerUUID) {
-        if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Fetching player nick from API ..."); }
+    private static String fetchJavaPlayerNickFromAPI(String playerUUID) {
+        if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Fetching Java player nick from API ..."); }
 
         String apiUrl = "https://api.minetools.eu/profile/" + playerUUID;
         try {
@@ -388,17 +477,17 @@ public class DatabaseUtils {
 
             // Read the response from the API
             try (Scanner scanner = new Scanner(connection.getInputStream())) {
-                if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Reading response from API ..."); }
+                if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Reading response from API (Java) ..."); }
                 String response = scanner.useDelimiter("\\A").next();
                 JsonNode rootNode = StatSyncTask.MAPPER.readTree(response);
                 JsonNode decodedNode = rootNode.get("decoded");
                 JsonNode profileNameNode = decodedNode.get("profileName");
-                if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Player nick fetched from API: {}", profileNameNode.asText()); }
+                if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Player nick fetched from API (Java): {}", profileNameNode.asText()); }
                 return profileNameNode != null ? profileNameNode.asText() : null;
             }
         } catch (Exception e) {
             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Trace: ", e); }
-            PlayerStatistics.LOGGER.error("Error fetching player nick from API: {}", e.getMessage());
+            PlayerStatistics.LOGGER.error("Error fetching player nick from API (Java): {}", e.getMessage());
             return null;
         }
     }
@@ -406,8 +495,7 @@ public class DatabaseUtils {
     /**
       *   Update the positions for all players in the database.
       *   This method ranks players based on the amount of each stat and updates the position column in the database.
-      *   Only the top 10 players for each stat are ranked.
-      *   TODO: Update only if there are changes, no need to update it every time.
+      *   Only the top 5 players for each stat are ranked.
       *
       *   @param connection The connection to the database.
       *   @throws UnsupportedOperationException If an SQL error occurs.
@@ -489,7 +577,7 @@ public class DatabaseUtils {
             ON %s.player_id = %s.player_id
             AND %s.stat_name = %s.stat_name
             SET %s.position = %s.row_num
-            WHERE %s.row_num <= 10
+            WHERE %s.row_num <= 5
         """.formatted(tableName, tempTableName, tableName, tempTableName, tableName, tempTableName, tableName, tempTableName, tempTableName);
 
         String dropTempTableSQL = "DROP TEMPORARY TABLE " + tempTableName;
@@ -543,14 +631,14 @@ public class DatabaseUtils {
                 FROM ranked_data_cte
                 WHERE ranked_data_cte.player_id = %s.player_id
                   AND ranked_data_cte.stat_name = %s.stat_name
-                  AND ranked_data_cte.row_num <= 10
+                  AND ranked_data_cte.row_num <= 5
             )
             WHERE EXISTS (
                 SELECT 1
                 FROM ranked_data_cte
                 WHERE ranked_data_cte.player_id = %s.player_id
                   AND ranked_data_cte.stat_name = %s.stat_name
-                  AND ranked_data_cte.row_num <= 10
+                  AND ranked_data_cte.row_num <= 5
             )
         """.formatted(tableName, tableName, tableName, tableName, tableName, tableName);
 
@@ -574,7 +662,7 @@ public class DatabaseUtils {
 
         try {
             // Reset the 'hall_of_fame' table
-            String clearHallOfFameSQL = "";
+            String clearHallOfFameSQL;
 
             // SQLite
             if ("SQLITE".equalsIgnoreCase(DB_TYPE)) {
