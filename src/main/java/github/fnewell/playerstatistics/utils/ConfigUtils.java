@@ -130,6 +130,27 @@ public class ConfigUtils {
                 // Check if the sync-interval is a valid number
                 int sync_interval = conf_file.getInt("sync-interval");
 
+
+                // Check if stats-folder is set up correctly
+                String stats_folder;
+                try {
+                    stats_folder = conf_file.getString("stats-folder");
+
+                    // Check if stats_folder is empty string or null, then set it to "stats"
+                    if (stats_folder == null || stats_folder.isEmpty()) {
+                        stats_folder = "world/stats";
+                    } else {
+                        // Check if there's a leading or trailing slash, remove it
+                        if (stats_folder.startsWith("/") || stats_folder.endsWith("/")) {
+                            stats_folder = stats_folder.replaceAll("^/|/$", "");
+                        }
+                    }
+
+                } catch (ConfigException.Missing ignored) {
+                    stats_folder = "world/stats";
+                }
+
+
                 // Check if the database section is set up correctly
                 Config database = conf_file.getConfig("database-section");
                 if (!database.hasPath("location")) {
@@ -179,6 +200,7 @@ public class ConfigUtils {
                 return ConfigFactory.empty()
                         .withValue("sync-thread-count", ConfigValueFactory.fromAnyRef(sync_thread_count))
                         .withValue("sync-interval", ConfigValueFactory.fromAnyRef(sync_interval))
+                        .withValue("stats-folder", ConfigValueFactory.fromAnyRef(stats_folder))
                         .withValue("web-server", webServer.root())
                         .withValue("database", database.root());
             } catch (Exception e) {
