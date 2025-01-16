@@ -34,7 +34,6 @@ public class StatSyncScheduler {
             if (Objects.equals(StatSyncTask.status, "Idle")) {
                 try {
                     StatSyncTask.syncAllPlayerStats();
-                    isScheduled = true;
                     if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Scheduled synchronization task completed successfully."); }
                 } catch (Exception e) {
                     if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Trace: ", e); }
@@ -42,6 +41,7 @@ public class StatSyncScheduler {
                 }
             }
         }, 1, intervalMinutes, TimeUnit.MINUTES);
+        isScheduled = true;
 
         // Print info about the scheduled sync
         PlayerStatistics.LOGGER.info("Player stats synchronization was successfully scheduled with an interval of {} minutes.", intervalMinutes);
@@ -60,13 +60,15 @@ public class StatSyncScheduler {
 
         PlayerStatistics.LOGGER.info("Stopping scheduled synchronization ...");
         scheduler.shutdown();
-        isScheduled = false;
+
         try {
-            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+            if (!scheduler.awaitTermination(3, TimeUnit.SECONDS)) {
                 scheduler.shutdownNow();
             }
         } catch (InterruptedException e) {
             scheduler.shutdownNow();
         }
+
+        isScheduled = false;
     }
 }

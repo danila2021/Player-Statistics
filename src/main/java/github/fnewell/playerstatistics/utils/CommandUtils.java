@@ -16,7 +16,7 @@ import static net.minecraft.server.command.CommandManager.literal;
 public class CommandUtils {
 
     // Executor for async tasks
-    private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+    public static final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     /**
      * Register commands

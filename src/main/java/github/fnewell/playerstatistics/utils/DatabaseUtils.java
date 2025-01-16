@@ -107,6 +107,7 @@ public class DatabaseUtils {
 
         try (ExecutorService executor = Executors.newFixedThreadPool(ConfigUtils.config.getInt("sync-thread-count"))) {
             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Executor created (missing nicks)"); }
+            PlayerStatistics.executors.add(executor);   // Add the executor to the list of executors for cleanup
 
             // Get total number of missing player nicks
             try (PreparedStatement countStmt = connection.prepareStatement(countSQL);
@@ -163,7 +164,7 @@ public class DatabaseUtils {
 
             // Wait for all threads to finish
             executor.shutdown();
-            if (!executor.awaitTermination(10, TimeUnit.MINUTES)) {
+            if (!executor.awaitTermination(3, TimeUnit.MINUTES)) {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {
@@ -509,6 +510,8 @@ public class DatabaseUtils {
 
         try (ExecutorService executor = Executors.newFixedThreadPool(sync_thread_count)) {
             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Executor created (positions)"); }
+            PlayerStatistics.executors.add(executor);   // Add the executor to the list of executors for cleanup
+
             for (String tableName : TABLE_NAMES) {
                 executor.submit(() -> {
                     if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Executor running (positions)"); }
@@ -538,7 +541,7 @@ public class DatabaseUtils {
             }
 
             executor.shutdown();
-            if (!executor.awaitTermination(10, TimeUnit.MINUTES)) {
+            if (!executor.awaitTermination(3, TimeUnit.MINUTES)) {
                 executor.shutdown();
             }
         } catch (InterruptedException e) {

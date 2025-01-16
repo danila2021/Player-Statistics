@@ -124,6 +124,7 @@ public class StatSyncTask {
 
                 try (ExecutorService executor = Executors.newFixedThreadPool(ConfigUtils.config.getInt("sync-thread-count"))) {
                     if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Executor created."); }
+                    PlayerStatistics.executors.add(executor);   // Add the executor to the list of executors for cleanup
 
                     fileTimestamps.forEach((playerUUID, lastModified) -> {
                         Timestamp playerLastOnline = dbPlayers.get(playerUUID.toString());
@@ -150,7 +151,7 @@ public class StatSyncTask {
                     });
 
                     executor.shutdown();
-                    if (!executor.awaitTermination(10, TimeUnit.MINUTES)) {
+                    if (!executor.awaitTermination(3, TimeUnit.MINUTES)) {
                         executor.shutdownNow();
                     }
                 } catch (InterruptedException e) {
