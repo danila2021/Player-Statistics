@@ -31,14 +31,15 @@ public class ConfigUtils {
         if (!Files.exists(modConfigDir)) {
             try {
                 Files.createDirectories(modConfigDir);
-                // Now create the default config file(s)
-                if(!copyDefaultConfig(modConfigDir)) {
-                    return false;
-                }
             } catch (IOException e) {
                 PlayerStatistics.LOGGER.error("Failed to create config directory, with error: {}", e.getMessage());
                 return false;
             }
+        }
+
+        // Check if mod's config exists, create it if it doesn't
+        if (Files.notExists(modConfigDir.resolve(CONFIG_FILE_NAME)) && !copyDefaultConfig(modConfigDir)) {
+            return false;
         }
 
         // Check if the mod's data folder exists, create it if it doesn't
