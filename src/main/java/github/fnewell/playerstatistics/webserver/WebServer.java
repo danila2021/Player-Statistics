@@ -11,10 +11,16 @@ import java.nio.file.Path;
 
 public class WebServer {
 
+    // Javalin web server instance
+    private static Javalin app;
+
+    /**
+     * Starts the web server
+     * */
     public static void startServer() {
         int port = ConfigUtils.config.getInt("web-server.port");
 
-        Javalin app = Javalin.create(config -> {
+        app = Javalin.create(config -> {
             config.showJavalinBanner = false;
             config.staticFiles.add("/webpage", Location.CLASSPATH);
         }).start(port);
@@ -29,8 +35,18 @@ public class WebServer {
                 ctx.contentType("application/octet-stream");
                 ctx.result(Files.newInputStream(dbPath));
             } else {
-                ctx.status(404).result("File not found: data2.db");
+                ctx.status(404).result("File not found");
             }
         });
+    }
+
+    /**
+     * Stops the web server
+     * */
+    public static void stopServer() {
+        if (app != null) {
+            app.stop();
+            PlayerStatistics.LOGGER.info("Web server stopped");
+        }
     }
 }
