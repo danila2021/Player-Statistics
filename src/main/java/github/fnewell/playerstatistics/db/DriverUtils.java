@@ -1,7 +1,7 @@
 package github.fnewell.playerstatistics.db;
 
 import github.fnewell.playerstatistics.PlayerStatistics;
-import net.fabricmc.loader.api.FabricLoader;
+import net.neoforged.fml.loading.FMLPaths;
 
 import java.net.URI;
 import java.net.URL;
@@ -16,20 +16,19 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map;
 
-
 public class DriverUtils {
 
     public static DriverShim customDriverShim;
 
     /**
-      * Function to register a custom SQLite JDBC driver via DriverShim
-      */
+     * Function to register a custom SQLite JDBC driver via DriverShim
+     */
     public static void registerSQLite() {
         try {
             if(PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Registering custom SQLite JDBC driver ..."); }
 
             // Path to the custom SQLite JDBC driver
-            Path driverPath = FabricLoader.getInstance().getGameDir().resolve("mods/player-statistics/libs/sqlite-jdbc-3.47.1.0.jar");
+            Path driverPath = FMLPaths.GAMEDIR.get().resolve("mods/player-statistics/libs/sqlite-jdbc-3.47.1.0.jar");
             URL driverUrl = driverPath.toUri().toURL();
 
             if(PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Driver URL: {}", driverUrl); }
@@ -52,8 +51,8 @@ public class DriverUtils {
     }
 
     /**
-      * Entry point to check for required drivers and download them if missing.
-      */
+     * Entry point to check for required drivers and download them if missing.
+     */
     public static void checkDrivers() {
         try {
             if(PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Checking for required drivers ..."); }
@@ -65,7 +64,7 @@ public class DriverUtils {
                     "postgresql-42.7.4.jar", "https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.4/postgresql-42.7.4.jar"
             );
 
-            ensureDriversExist(drivers, FabricLoader.getInstance().getGameDir().resolve("mods/player-statistics/libs"));
+            ensureDriversExist(drivers, FMLPaths.GAMEDIR.get().resolve("mods/player-statistics/libs"));
 
             if(PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Required drivers checked!"); }
         } catch (Exception e) {

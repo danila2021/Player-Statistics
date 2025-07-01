@@ -3,27 +3,25 @@ package github.fnewell.playerstatistics.utils;
 import com.mojang.logging.LogUtils;
 import com.typesafe.config.*;
 import github.fnewell.playerstatistics.PlayerStatistics;
-import net.fabricmc.loader.api.FabricLoader;
+import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-
 public class ConfigUtils {
 
-    private static final Path configDir = FabricLoader.getInstance().getConfigDir();    // Path to the config directory
-    private static final String CONFIG_FILE_NAME = "player-statistics.conf";            // Name of the config file
+    private static final Path configDir = FMLPaths.CONFIGDIR.get();
+    private static final String CONFIG_FILE_NAME = "player-statistics.conf";
 
     // Static variable to hold the loaded config
     public static Config config;
 
-
     /**
-      * This method is used to create the config folder and default files if they don't exist
-      * @return boolean - true if the config was successfully initialized, otherwise false
-      */
+     * This method is used to create the config folder and default files if they don't exist
+     * @return boolean - true if the config was successfully initialized, otherwise false
+     */
     public static boolean initializeConfig() {
         Path modConfigDir = configDir.resolve(PlayerStatistics.MOD_ID);
 
@@ -43,7 +41,7 @@ public class ConfigUtils {
         }
 
         // Check if the mod's data folder exists, create it if it doesn't
-        Path modDataDir = FabricLoader.getInstance().getGameDir().resolve("mods/player-statistics");
+        Path modDataDir = FMLPaths.GAMEDIR.get().resolve("mods/player-statistics");
 
         if (!Files.exists(modDataDir)) {
             try {
@@ -61,12 +59,12 @@ public class ConfigUtils {
     }
 
     /**
-      * Copy the default configuration file from resources to the mod's config directory
-      * @param modConfigDir - Path to the mod's config directory
-      * @return boolean - true if the file was successfully copied, otherwise false
-      */
+     * Copy the default configuration file from resources to the mod's config directory
+     * @param modConfigDir - Path to the mod's config directory
+     * @return boolean - true if the file was successfully copied, otherwise false
+     */
     private static boolean copyDefaultConfig(Path modConfigDir) {
-        Path configFile = modConfigDir.resolve(CONFIG_FILE_NAME);   // Path to the config file
+        Path configFile = modConfigDir.resolve(CONFIG_FILE_NAME);
 
         // Only copy the file if it doesn't already exist
         if (!Files.exists(configFile)) {
@@ -83,9 +81,9 @@ public class ConfigUtils {
     }
 
     /**
-      * Load the config file and parse it using Typesafe Config (HOCON)
-      * @return Config - the parsed config file or null if an error occurred
-      */
+     * Load the config file and parse it using Typesafe Config (HOCON)
+     * @return Config - the parsed config file or null if an error occurred
+     */
     private static Config loadConfig() {
         // Path to the config file
         Path configFile = configDir.resolve(PlayerStatistics.MOD_ID).resolve(CONFIG_FILE_NAME);
@@ -108,8 +106,8 @@ public class ConfigUtils {
                     return null;
                 }
 
-                int sync_thread_count = conf_file.getInt("sync-thread-count");  // Get number of threads to use for synchronization
-                int cpu_count = Runtime.getRuntime().availableProcessors();          // Get the number of available processors
+                int sync_thread_count = conf_file.getInt("sync-thread-count");
+                int cpu_count = Runtime.getRuntime().availableProcessors();
 
                 // If the sync-thread-count is 0, set it to the number of available processors
                 if (sync_thread_count == 0) {
@@ -131,7 +129,6 @@ public class ConfigUtils {
                 // Check if the sync-interval is a valid number
                 int sync_interval = conf_file.getInt("sync-interval");
 
-
                 // Check if stats-folder is set up correctly
                 String stats_folder;
                 try {
@@ -150,7 +147,6 @@ public class ConfigUtils {
                 } catch (ConfigException.Missing ignored) {
                     stats_folder = "world/stats";
                 }
-
 
                 // Check if the database section is set up correctly
                 Config database = conf_file.getConfig("database-section");
